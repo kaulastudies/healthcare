@@ -2,59 +2,194 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Enterprise Revenue Operations | Vizag Claims Architect</title>
+    <title>Enterprise Revenue Operations</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <style>
         @media print { .no-print { display: none; } body { background: white; } }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-slate-50 text-slate-800 font-sans">
     <div class="max-w-6xl mx-auto p-4 md:p-8">
-        <header class="flex justify-between items-center mb-8 no-print">
+        <header class="flex justify-between items-center mb-8 no-print border-b pb-4">
             <div>
                 <h1 class="text-3xl font-extrabold text-indigo-900">Revenue Architect</h1>
-                <p class="text-indigo-600">Vizag Operations Command Center</p>
+                <p class="text-indigo-600 font-semibold">Vizag Operations Command</p>
             </div>
-            <button onclick="window.print()" class="bg-indigo-900 text-white px-6 py-2 rounded-lg font-bold">Generate Report</button>
+            <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded font-bold shadow hover:bg-black">Print Executive Report</button>
         </header>
 
-        <nav class="flex space-x-2 mb-6 no-print">
-            <button onclick="switchTab('empanelment')" class="tab-btn px-6 py-2 bg-white rounded-t-lg font-semibold border-b-2 border-indigo-600">Empanelment</button>
-            <button onclick="switchTab('audit')" class="tab-btn px-6 py-2 bg-slate-200 rounded-t-lg font-semibold">Claims Audit</button>
-            <button onclick="switchTab('preauth')" class="tab-btn px-6 py-2 bg-slate-200 rounded-t-lg font-semibold">Pre-Auth Simulator</button>
+        <nav class="flex space-x-2 mb-6 no-print border-b">
+            <button onclick="switchTab('empanelment')" id="tab-empanelment" class="tab-btn px-6 py-3 bg-white font-bold border-t-4 border-indigo-600 text-indigo-900 rounded-t-lg">1. Hospital Empanelment</button>
+            <button onclick="switchTab('audit')" id="tab-audit" class="tab-btn px-6 py-3 bg-slate-200 font-bold text-slate-600 rounded-t-lg hover:bg-slate-300">2. Claims Audit</button>
+            <button onclick="switchTab('preauth')" id="tab-preauth" class="tab-btn px-6 py-3 bg-slate-200 font-bold text-slate-600 rounded-t-lg hover:bg-slate-300">3. AI Pre-Auth Engine</button>
         </nav>
 
-        <div id="content" class="bg-white p-8 rounded-b-lg shadow-xl border-t-4 border-indigo-900">
-            </div>
+        <div id="content" class="bg-white p-8 rounded-b-lg shadow-lg border border-slate-200"></div>
     </div>
 
     <script>
         const content = document.getElementById('content');
-        
+
+        // --- TAB SWITCHING LOGIC ---
         function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('bg-white', 'bg-slate-200'));
-            event.target.classList.replace('bg-slate-200', 'bg-white');
-            
-            if(tab === 'audit') {
-                content.innerHTML = `
-                    <h2 class="text-xl font-bold mb-4">Revenue Recovery & Leakage Analysis</h2>
-                    <form id="auditForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <input type="text" id="hName" placeholder="Hospital Name" class="p-2 border rounded" required>
-                        <select id="leakType" class="p-2 border rounded"><option value="AsstSurgeon">Asst. Surgeon</option><option value="Consumables">Consumables</option></select>
-                        <button class="bg-indigo-700 text-white p-2 rounded">Submit Analysis</button>
-                    </form>
-                    <table class="w-full border"><thead><tr class="bg-slate-100"><th class="p-2 text-left">Hospital</th><th class="p-2 text-left">Leak Type</th><th class="p-2 text-left">Status</th></tr></thead><tbody id="queue"></tbody></table>
-                `;
-            } else if(tab === 'empanelment') {
-                content.innerHTML = `<h2 class="text-xl font-bold mb-4">Empanelment Scorecard & Checklist</h2><div id="empList"></div>`;
-            } else {
-                content.innerHTML = `<h2 class="text-xl font-bold mb-4">Pre-Auth Eligibility Engine</h2><div class="p-4 bg-slate-50 border rounded"><p>Enter Policy Data to generate Eligibility Score...</p></div>`;
-            }
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-white', 'border-t-4', 'border-indigo-600', 'text-indigo-900');
+                b.classList.add('bg-slate-200', 'text-slate-600');
+            });
+            const activeBtn = document.getElementById('tab-' + tab);
+            activeBtn.classList.remove('bg-slate-200', 'text-slate-600');
+            activeBtn.classList.add('bg-white', 'border-t-4', 'border-indigo-600', 'text-indigo-900');
+
+            if (tab === 'empanelment') renderEmpanelment();
+            if (tab === 'audit') renderAudit();
+            if (tab === 'preauth') renderPreAuth();
         }
-        
-        // Initial Load
+
+        // --- 1. EMPANELMENT MODULE ---
+        function renderEmpanelment() {
+            content.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4 text-slate-800">Hospital Onboarding & Empanelment</h2>
+                <form id="empForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 bg-slate-50 p-6 rounded border">
+                    <div><label class="block text-sm font-bold text-slate-600">Hospital Name</label><input type="text" id="eName" class="w-full p-2 border rounded" required></div>
+                    <div><label class="block text-sm font-bold text-slate-600">TPA/Insurance Partners</label><input type="text" id="ePartners" placeholder="e.g., Star Health, HDFC" class="w-full p-2 border rounded"></div>
+                    <div><label class="block text-sm font-bold text-slate-600">Is Empanelled?</label><select id="eStatus" class="w-full p-2 border rounded"><option value="true">Yes - Active</option><option value="false">No - Pending Setup</option></select></div>
+                    <div><label class="block text-sm font-bold text-slate-600">Master Tariff Mapped?</label><select id="eTariff" class="w-full p-2 border rounded"><option value="false">No - Audit Required</option><option value="true">Yes - Mapped</option></select></div>
+                    <div class="md:col-span-2"><button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded font-bold w-full md:w-auto">Save Hospital Profile</button></div>
+                </form>
+                <div id="empList" class="mt-4"></div>
+            `;
+
+            document.getElementById('empForm').onsubmit = async (e) => {
+                e.preventDefault();
+                await supabaseClient.from('hospital_empanelment').insert([{
+                    hospital_name: document.getElementById('eName').value,
+                    insurance_partners: [document.getElementById('ePartners').value],
+                    is_empanelled: document.getElementById('eStatus').value === 'true',
+                    tariff_mapped: document.getElementById('eTariff').value === 'true',
+                    checklist_status: 'Initial Setup'
+                }]);
+                alert('Hospital Profile Saved to Database');
+                document.getElementById('empForm').reset();
+            };
+        }
+
+        // --- 2. AUDIT MODULE ---
+        function renderAudit() {
+            content.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4 text-slate-800">Revenue Leakage & Recovery Log</h2>
+                <form id="auditForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-6 rounded border">
+                    <input type="text" id="aHosp" placeholder="Hospital Name" class="p-2 border rounded" required>
+                    <select id="aLeak" class="p-2 border rounded">
+                        <option value="Asst_Surgeon">Asst. Surgeon Billing</option>
+                        <option value="Consumables">Missing Consumables</option>
+                        <option value="Documentation">Documentation Deficiency</option>
+                    </select>
+                    <input type="number" id="aAmt" placeholder="Loss Amount (₹)" class="p-2 border rounded" required>
+                    <button type="submit" class="bg-indigo-600 text-white p-2 rounded font-bold">Log Leakage</button>
+                </form>
+                <p class="text-sm text-green-700 italic mb-4">Note: Submitting saves directly to Supabase tracking.</p>
+            `;
+            
+            document.getElementById('auditForm').onsubmit = async (e) => {
+                e.preventDefault();
+                await supabaseClient.from('revenue_audit').insert([{
+                    hospital_name: document.getElementById('aHosp').value,
+                    leak_type: document.getElementById('aLeak').value,
+                    amount: document.getElementById('aAmt').value,
+                    status: 'Audit Logged'
+                }]);
+                alert('Audit Logged Successfully');
+                document.getElementById('auditForm').reset();
+            };
+        }
+
+        // --- 3. AI PRE-AUTH ENGINE (Simulator) ---
+        function renderPreAuth() {
+            content.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4 text-slate-800">AI Pre-Auth Eligibility & Tariff Estimator</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <form id="preAuthForm" class="bg-slate-50 p-6 rounded border space-y-4">
+                        <div><label class="block text-sm font-bold text-slate-600">Patient & Hospital</label><input type="text" id="pPatient" placeholder="Patient Name" class="w-full p-2 border rounded mb-2" required><input type="text" id="pHosp" placeholder="Hospital Name" class="w-full p-2 border rounded" required></div>
+                        <div><label class="block text-sm font-bold text-slate-600">Proposed Procedure</label><input type="text" id="pProc" placeholder="e.g., Cataract Surgery" class="w-full p-2 border rounded" required></div>
+                        <div><label class="block text-sm font-bold text-slate-600">Hospital Billed Estimate (₹)</label><input type="number" id="pEst" class="w-full p-2 border rounded" required></div>
+                        <div><label class="block text-sm font-bold text-slate-600">Policy Type</label><select id="pType" class="w-full p-2 border rounded"><option value="Standard">Standard Retail Policy</option><option value="Corporate">Corporate Group Policy</option><option value="Senior">Senior Citizen Policy</option></select></div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-600 mb-1">Upload Policy PDF</label>
+                            <input type="file" id="pPdf" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700">
+                        </div>
+                        <button type="button" onclick="runAIAnalysis()" class="bg-indigo-900 text-white w-full py-3 rounded font-bold hover:bg-black">Run AI Analysis</button>
+                    </form>
+
+                    <div id="aiOutput" class="bg-white p-6 rounded border border-indigo-200 shadow-inner hidden">
+                        <h3 class="font-bold text-lg text-indigo-900 mb-2 border-b pb-2">Analysis Results</h3>
+                        <div id="aiLoading" class="hidden text-center py-8"><div class="loader mb-2"></div><p class="text-indigo-600 font-semibold">AI Analyzing Policy Guidelines...</p></div>
+                        <div id="aiResults" class="space-y-4 mt-4 hidden">
+                            <p class="text-sm"><strong>Estimated Hospital Bill:</strong> ₹<span id="resBill"></span></p>
+                            <p class="text-sm text-green-700"><strong>AI Predicted Approval:</strong> ₹<span id="resApprove" class="font-bold text-lg"></span></p>
+                            <div class="p-3 bg-red-50 text-red-800 border border-red-200 rounded text-sm"><p class="font-bold">AI Remark (Deduction Reason):</p><p id="resRemark"></p></div>
+                            <button onclick="savePreAuth()" class="bg-green-600 text-white px-4 py-2 rounded text-sm mt-4 font-bold">Save Case to Database</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- AI LOGIC SIMULATOR ---
+        let currentCaseData = {};
+
+        function runAIAnalysis() {
+            document.getElementById('aiOutput').classList.remove('hidden');
+            document.getElementById('aiLoading').classList.remove('hidden');
+            document.getElementById('aiResults').classList.add('hidden');
+
+            const bill = Number(document.getElementById('pEst').value);
+            const policyType = document.getElementById('pType').value;
+            const proc = document.getElementById('pProc').value.toLowerCase();
+
+            // Simulate Network Delay for AI
+            setTimeout(() => {
+                let approval = bill;
+                let remark = "Standard deductions apply.";
+
+                // Rule-Based Logic (To be replaced by Gemini API later)
+                if (policyType === 'Senior' || proc.includes('cataract')) {
+                    approval = bill * 0.80; // 20% co-pay common
+                    remark = "Mandatory 20% Co-pay detected for Senior/Cataract under master tariff logic.";
+                } else if (policyType === 'Standard') {
+                    approval = bill * 0.90; // 10% consumable deduction
+                    remark = "Standard 10% deduction applied for non-medical consumables (Gloves, PPE).";
+                }
+
+                currentCaseData = {
+                    hospital_name: document.getElementById('pHosp').value,
+                    patient_name: document.getElementById('pPatient').value,
+                    procedure_name: proc,
+                    policy_type: policyType,
+                    hospital_estimate: bill,
+                    ai_approved_amount: approval,
+                    ai_remarks: remark
+                };
+
+                document.getElementById('resBill').innerText = bill;
+                document.getElementById('resApprove').innerText = approval;
+                document.getElementById('resRemark').innerText = remark;
+
+                document.getElementById('aiLoading').classList.add('hidden');
+                document.getElementById('aiResults').classList.remove('hidden');
+            }, 1500);
+        }
+
+        async function savePreAuth() {
+            await supabaseClient.from('preauth_cases').insert([currentCaseData]);
+            alert('Case saved to Supabase! You can now advise the patient.');
+            switchTab('preauth'); // Reset tab
+        }
+
+        // Initialize First Tab
         switchTab('empanelment');
     </script>
 </body>
