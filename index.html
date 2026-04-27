@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue Recovery Portal | Medical Claims Architect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-6xl mx-auto p-6">
+        <header class="flex justify-between items-center mb-8 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-900">Claims Recovery System</h1>
+                <p class="text-sm text-gray-500">Revenue Audit & Compliance Portal</p>
+            </div>
+            <button onclick="window.location.reload()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Refresh Audit Data</button>
+        </header>
+
+        <div class="bg-white p-6 rounded shadow mb-8 border-l-4 border-red-500">
+            <h2 class="font-bold mb-4 text-red-800 uppercase text-xs tracking-wider">Pre-Auth Eligibility Simulator</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <select id="procType" class="p-2 border rounded" onchange="runSim()">
+                    <option value="Emergency">Emergency (Accident)</option>
+                    <option value="Planned_General">Planned (General Surgery)</option>
+                    <option value="Planned_Excluded">Planned (Potential Exclusion)</option>
+                </select>
+                <select id="tenure" class="p-2 border rounded" onchange="runSim()">
+                    <option value="New">Policy < 1 Year</option>
+                    <option value="Old">Policy > 2 Years</option>
+                </select>
+                <div id="simResult" class="p-2 bg-gray-50 border rounded text-sm font-medium italic">Select parameters...</div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-8 border-l-4 border-indigo-700">
+            <h2 class="font-bold mb-4">Log New Revenue Leakage</h2>
+            <form id="auditForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="hName" placeholder="Hospital Name" class="p-2 border rounded" required>
+                <select id="leakType" class="p-2 border rounded" onchange="generateInsight()">
+                    <option value="Asst_Surgeon">Asst. Surgeon Billing</option>
+                    <option value="Consumables">Missing Consumables</option>
+                    <option value="Documentation">Documentation Deficiency</option>
+                    <option value="Medical_Necessity">Medical Necessity Denial</option>
+                </select>
+                <input type="number" id="amt" placeholder="Loss Amount (₹)" class="p-2 border rounded" required>
+                <button type="submit" class="bg-indigo-700 text-white px-4 py-2 rounded font-bold">Log & Analyze</button>
+            </form>
+            <div id="insightBox" class="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded text-indigo-800 text-sm italic"></div>
+        </div>
+
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-100 uppercase text-xs text-gray-600">
+                    <tr><th class="p-3 text-left">Hospital</th><th class="p-3 text-left">Leak Type</th><th class="p-3 text-left">Expert Recommendation</th><th class="p-3 text-left">Status</th></tr>
+                </thead>
+                <tbody id="auditQueue"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function runSim() {
+            const proc = document.getElementById('procType').value;
+            const res = document.getElementById('simResult');
+            if (proc === 'Planned_Excluded') res.innerHTML = "❌ <span class='text-red-600'>Risk: Likely Rejection</span>";
+            else res.innerHTML = "✅ <span class='text-green-600'>Proceed: Approval Likely</span>";
+        }
+
+        function generateInsight() {
+            const type = document.getElementById('leakType').value;
+            const insights = {
+                'Asst_Surgeon': "Action: Cross-reference OT Notes with surgeon logs. Omitted assistant details cause 20% leakage.",
+                'Consumables': "Action: Reconcile pharmacy indents vs OT logs. Identify non-billable implants.",
+                'Documentation': "Action: Audit discharge summaries for timestamp gaps. Fix procedural timeline data.",
+                'Medical_Necessity': "Action: Prepare 'Review of Necessity' letter citing clinical outcomes."
+            };
+            document.getElementById('insightBox').innerText = insights[type];
+        }
+
+        async function loadAudit() {
+            const { data } = await supabaseClient.from('revenue_audit').select('*');
+            const tbody = document.getElementById('auditQueue');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `<tr class="border-b"><td class="p-3">${item.hospital_name}</td><td class="p-3">${item.leak_type}</td><td class="p-3 text-xs text-blue-700">${item.audit_recommendation || ''
